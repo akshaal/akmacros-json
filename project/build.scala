@@ -39,7 +39,7 @@ object build extends Build {
         ))
 
     lazy val root = Project(
-        id = "json",
+        id = "akmacros-json",
         base = file("."),
         settings = sharedSettings
     )

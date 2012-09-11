@@ -33,6 +33,8 @@ object play {
 
     def jsonate[T: Writes](t: T, args: Any): JsValue = Json.toJson(t)
 
+    implicit val symbolWrites = new Writes[Symbol] { def writes(t : Symbol) : JsValue = Json.toJson(t.name)}
+
     // Reads
 
     class RichFactory[T <: AnyRef](val factory: Factory[JsValue, T]) {
@@ -59,17 +61,18 @@ object play {
     def fromJson[T](valueOpt: Option[JsValue], sym: Symbol)(implicit reads : Reads[T]): Option[T] =
         valueOpt map (Json.fromJson(_)(reads))
 
-    def jsHas(sym : Symbol) = (_ : JsValue) match {
+    def jsHas(sym: Symbol) = (_ : JsValue) match {
         case js : JsObject => js.value contains sym.name
         case _ => false
     }
 
-    def jsValue[T : Writes](sym : Symbol, value : T) = (_ : JsValue) match {
-        case js : JsObject => js.value get sym.name map (_ == value) getOrElse false
-        case _ => false
+    def jsHas(pair: (Symbol, Symbol)) = (_ : JsValue) match {
+        case js : JsObject => js.value get pair._1.name map (_ == JsString(pair._2.name)) getOrElse false
+        case js => false
     }
 
     // Macros
     def allFields[I <: AnyRef](apply: Symbol) = macro clazz.fieldsImpl[Any, I, JsValue, None.type]
+    def annotatedFields[I <: AnyRef, A](apply: Symbol) = macro clazz.fieldsImpl[A, I, JsValue, None.type]
     def factory[I <: AnyRef](apply: Symbol) = macro clazz.factoryImpl[JsValue, I]
 }

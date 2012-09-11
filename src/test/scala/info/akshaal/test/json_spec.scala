@@ -12,7 +12,9 @@ class JsonSpec extends Specification with matcher.ScalaCheckMatchers {
             "in simple cases" ! simpleExample ^
             "in simple cases with implicit reads/writes" ! simpleImplExample ^
             "in more complicated cases" ! serExample ^
-            "in more complicated cases with implicit reads/writes" ! serImplExample
+            "in more complicated cases with implicit reads/writes" ! serImplExample ^
+            "by matching extra fields on abstract type" ! extraFieldExample ^
+            "with annotated fields" ! annotatedExample
 
     // Domain objects
     case class Simple(str: String, num: Int = 0)
@@ -111,6 +113,58 @@ class JsonSpec extends Specification with matcher.ScalaCheckMatchers {
 
         (Json.toJson(event).toString.trim aka "toJson" must_== json.trim) and
             (Json.fromJson[Event[Messages]](Json.toJson(event)) aka "fromToJson" must_== event)
+    }
+
+    def extraFieldExample = {
+        // How to write json objects
+        implicit def messageWrites = matchingWrites[Message] {
+            case m: QuitMessage => quitMessageJsFields.extra('type -> 'quit).toWrites.writes(m)
+            case m: Heartbeat   => heartbeatJsFields.extra('type -> 'heart).toWrites.writes(m)
+        }
+
+        implicit def quitMessageJsFields = allFields[QuitMessage]('jsonate)
+        implicit def heartbeatJsFields = allFields[Heartbeat]('jsonate)
+
+        val messages = List(Heartbeat(1), QuitMessage("Hello"), Heartbeat(99))
+        val messagesJs = Json.toJson(messages)
+        val messagesJsStr = """ [{"type":"heart","id":1},{"type":"quit","msg":"Hello"},{"type":"heart","id":99}] """
+
+        // How to read json objects
+        implicit def quitMessageJsFactory = factory[QuitMessage]('fromJson)
+        implicit def heartbeatJsFactory = factory[Heartbeat]('fromJson)
+
+        implicit def messageReads: Reads[Message] =
+            predicatedReads[Message](
+                jsHas('type -> 'quit)  -> quitMessageJsFactory,
+                jsHas('type -> 'heart) -> heartbeatJsFactory
+            )
+
+        val messages2 = Json.fromJson[List[Message]](messagesJs)
+
+        // Test
+        (messagesJs must_== Json.parse(messagesJsStr)) and
+            (messages2 must_== messages)
+    }
+
+    def annotatedExample = {
+        @annotation.meta.getter
+        class Ok extends annotation.StaticAnnotation
+
+        case class User(@Ok login: String,
+                        @Ok fullName: String,
+                        @Ok messages: Int = 0,
+                        passwordHash: Option[String] = None)
+
+        implicit val userJsFields = annotatedFields[User, Ok]('jsonate)
+
+        val user = User(login = "akshaal",
+                        fullName = "Evgeny Chukreev",
+                        messages = 10,
+                        passwordHash = Some("4d18758602c08243d7c08f8c9e4463b0"))
+
+        val userJs = Json.toJson(user)
+
+        userJs must_== Json.parse("""{"login":"akshaal","fullName":"Evgeny Chukreev","messages":10}""")
     }
 }
 
