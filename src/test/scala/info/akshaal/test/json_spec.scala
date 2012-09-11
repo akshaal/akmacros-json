@@ -34,8 +34,8 @@ class JsonSpec extends Specification with matcher.ScalaCheckMatchers {
     }
 
     def simpleImplExample = {
-        implicit val simpleJsFields = factory[Simple]('fromJson)
-        implicit val simpleJsFactory = allFields[Simple]('jsonate)
+        implicit val simpleJsFactory = factory[Simple]('fromJson)
+        implicit val simpleJsFields = allFields[Simple]('jsonate)
 
         val obj = new Simple("123", 5)
         (Json.fromJson[Simple](Json.toJson(obj)) must_== obj) and
@@ -114,4 +114,4 @@ class JsonSpec extends Specification with matcher.ScalaCheckMatchers {
     }
 }
 
-//  LocalWords:  ScalaCheck fromToJson
+//  LocalWords:  ScalaCheck fromToJson HB
