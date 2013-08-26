@@ -2,7 +2,7 @@
 
 package info.akshaal.test
 
-import info.akshaal.json.play._
+import info.akshaal.json.jsonmacro._
 import play.api.libs.json._
 import org.specs2._
 
@@ -31,8 +31,8 @@ class JsonSpec extends Specification with matcher.ScalaCheckMatchers {
         implicit val simpleWrites = allFields[Simple]('jsonate).toWrites
 
         val obj = new Simple("123", 5)
-        (Json.fromJson[Simple](Json.toJson(obj)) must_== obj) and
-            (Json.fromJson[Simple](JsObject(List("str" -> JsString("x")))) must_== Simple("x"))
+        (Json.fromJson[Simple](Json.toJson(obj)).get must_== obj) and
+            (Json.fromJson[Simple](JsObject(List("str" -> JsString("x")))).get must_== Simple("x"))
     }
 
     def simpleImplExample = {
@@ -40,8 +40,8 @@ class JsonSpec extends Specification with matcher.ScalaCheckMatchers {
         implicit val simpleJsFields = allFields[Simple]('jsonate)
 
         val obj = new Simple("123", 5)
-        (Json.fromJson[Simple](Json.toJson(obj)) must_== obj) and
-            (Json.fromJson[Simple](JsObject(List("str" -> JsString("x")))) must_== Simple("x"))
+        (Json.fromJson[Simple](Json.toJson(obj)).get must_== obj) and
+            (Json.fromJson[Simple](JsObject(List("str" -> JsString("x")))).get must_== Simple("x"))
     }
 
     def serExample = {
@@ -65,8 +65,8 @@ class JsonSpec extends Specification with matcher.ScalaCheckMatchers {
         implicit def eventReads[T: Reads] = factory[Event[T]]('fromJson).toReads
 
         implicit lazy val messageReads: Reads[Message] = matchingReads[Message] {
-            case js: JsObject if js.value contains "msg" => quitMessageReads.reads(js)
-            case js: JsObject if js.value contains "id"  => heartbeatReads.reads(js)
+            case js: JsObject if js.value contains "msg" => quitMessageReads.reads(js).get
+            case js: JsObject if js.value contains "id"  => heartbeatReads.reads(js).get
         }
 
         val event =
@@ -76,7 +76,7 @@ class JsonSpec extends Specification with matcher.ScalaCheckMatchers {
         val json = """{"kind":"t1","payloads":{"userId":4,"messages":[{"id":5},{"msg":"bye!"}]}}"""
 
         (Json.toJson(event).toString.trim aka "toJson" must_== json.trim) and
-            (Json.fromJson[Event[Messages]](Json.toJson(event)) aka "fromToJson" must_== event)
+            (Json.fromJson[Event[Messages]](Json.toJson(event)).get aka "fromToJson" must_== event)
     }
 
     def serImplExample = {
@@ -112,7 +112,7 @@ class JsonSpec extends Specification with matcher.ScalaCheckMatchers {
         val json = """{"kind":"t1","payloads":{"userId":4,"messages":[{"id":5},{"msg":"bye!"}]}}"""
 
         (Json.toJson(event).toString.trim aka "toJson" must_== json.trim) and
-            (Json.fromJson[Event[Messages]](Json.toJson(event)) aka "fromToJson" must_== event)
+            (Json.fromJson[Event[Messages]](Json.toJson(event)).get aka "fromToJson" must_== event)
     }
 
     def extraFieldExample = {
@@ -139,7 +139,7 @@ class JsonSpec extends Specification with matcher.ScalaCheckMatchers {
                 jsHas('type -> 'heart) -> heartbeatJsFactory
             )
 
-        val messages2 = Json.fromJson[List[Message]](messagesJs)
+        val messages2 = Json.fromJson[List[Message]](messagesJs).get
 
         // Test
         (messagesJs must_== Json.parse(messagesJsStr)) and
