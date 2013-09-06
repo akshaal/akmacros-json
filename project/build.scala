@@ -5,6 +5,7 @@ import org.ensime.sbt.Plugin.Settings.ensimeConfig
 import org.ensime.sbt.util.SExp._
 
 object build extends Build {
+    
     val sharedSettings = Defaults.defaultSettings ++ Seq(
         organization := "info.akshaal",
         version := "0.1-SNAPSHOT",
@@ -42,12 +43,13 @@ object build extends Build {
             )
         ))
 
+
     lazy val root = Project(
         id = "akmacros-json",
         base = file("."),
         settings = sharedSettings
     ) dependsOn(fixedMacros)
 
-    lazy val fixedMacros = RootProject(uri("https://github.com/ephe-meral/akmacros.git#fix-scala-2.10.2"))
 
+    lazy val fixedMacros = RootProject(uri("https://github.com/ephe-meral/akmacros.git#fix-scala-2.10.2"))
 }
