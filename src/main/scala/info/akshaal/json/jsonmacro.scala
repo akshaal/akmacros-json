@@ -3,11 +3,11 @@
 package info.akshaal.json
 
 import language.experimental.macros
-import _root_.play.api.libs.json._
+import play.api.libs.json._
 import info.akshaal.clazz
 import info.akshaal.clazz._
 
-object play {
+object jsonmacro {
     // Writes
 
     type JsFields[T <: AnyRef] = Fields[T, JsValue, Product]
@@ -40,26 +40,26 @@ object play {
     class RichFactory[T <: AnyRef](val factory: Factory[JsValue, T]) {
         def toReads: Reads[T] = new Reads[T] {
             def reads(json : JsValue) = json match {
-                case obj : JsObject => factory(sym => obj.value.get(sym.name))
-                case JsUndefined(_) => factory(sym => None)
-                case _ => throw new IllegalArgumentException("Illegal json value: " + json)
+                case obj : JsObject => JsSuccess[T](factory(sym => obj.value.get(sym.name)))
+                case JsUndefined(_) => JsSuccess[T](factory(sym => None))
+                case _ => JsError("Illegal json value: " + json)
             }
         }
     }
 
     def matchingReads[T] (f : JsValue => T) : Reads[T] = new Reads[T] {
-        def reads(js: JsValue): T = f(js)
+        def reads(js: JsValue): JsResult[T] = JsSuccess(f(js))
     }
 
     def predicatedReads[T <: AnyRef] (cases : (JsValue => Boolean, Factory[JsValue, T])*) = new Reads[T] {
-        def reads(js : JsValue) : T = (cases find (_._1(js)) map (_._2) map(toReads(_).reads(js))).get
+        def reads(js : JsValue) : JsResult[T] = JsSuccess((cases find (_._1(js)) map (_._2) map(toReads(_).reads(js).get)).get)
     }
 
     implicit def enrich [T <: AnyRef](factory: Factory[JsValue, T]) : RichFactory[T] = new RichFactory(factory)
     implicit def toReads [T <: AnyRef](implicit factory: Factory[JsValue, T]) : Reads[T] = factory.toReads
 
     def fromJson[T](valueOpt: Option[JsValue], sym: Symbol)(implicit reads : Reads[T]): Option[T] =
-        valueOpt map (Json.fromJson(_)(reads))
+        valueOpt map (Json.fromJson(_)(reads).get)
 
     def jsHas(sym: Symbol) = (_ : JsValue) match {
         case js : JsObject => js.value contains sym.name
